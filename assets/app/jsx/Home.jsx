@@ -1,6 +1,7 @@
 import React, {Component} from 'react';
 import dataFetch from './DataFetch';
 import {notifyError} from '../Common/common';
+import Swal from 'sweetalert2';
 
 const style = {
     container: {
@@ -44,6 +45,45 @@ class Home extends Component {
                 });
         }
     }
+    joinAuction = auction => {
+        if (auction.access_type === 'private') {
+            Swal.fire({
+                title: 'Password',
+                input: 'text',
+                inputAttributes: {
+                    autocapitalize: 'off'
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Join',
+                showLoaderOnConfirm: true,
+                preConfirm: password => {
+                    let data = {password, auction};
+                    dataFetch('/authorizeAuction', data)
+                        .then(data => {
+                            if (data.message.verified) {
+                                this.props.history.push('/auction/' + auction.auction_url);
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Oops...',
+                                    text: 'Incorrect Password'
+                                });
+                            }
+                        })
+                        .catch(err => {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Oops...',
+                                text: err
+                            });
+                        });
+                },
+                allowOutsideClick: () => !Swal.isLoading()
+            });
+        } else {
+            this.props.history.push('/auction/' + auction.auction_url);
+        }
+    };
 
     render() {
         return (
@@ -57,9 +97,7 @@ class Home extends Component {
                         this.state.liveAuctions.map(auction => {
                             return (
                                 <div>
-                                    <a href={'http://localhost:4000/auction/' + auction.auction_url}>
-                                        {auction.auction_url}
-                                    </a>
+                                    <span onClick={() => this.joinAuction(auction)}>{auction.auction_url}</span>
                                     <br />
                                 </div>
                             );

@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const cookieSession = require('cookie-session');
 const Sendresponse = require('../sendresponse');
 const models = require(__dirname + '/../../models/');
+const md5 = require('md5');
 
 // trust first proxy3
 app.set('trust proxy', 1);
@@ -25,7 +26,17 @@ app.use(
 app.use(bodyParser.json());
 
 app.post('/auctionConfig', function(req, res) {
-    const {q_type, user_id, can_register, is_open, url_slug: auction_url, max_users, owner_id} = req.body;
+    const {
+        q_type,
+        user_id,
+        can_register,
+        is_open,
+        url_slug: auction_url,
+        max_users,
+        owner_id,
+        access_type,
+        password
+    } = req.body;
     if (q_type == 'get_config') {
         models.AuctionConfig.findOne({
             where: {
@@ -46,7 +57,9 @@ app.post('/auctionConfig', function(req, res) {
             can_register,
             is_open,
             auction_url,
-            max_users
+            max_users,
+            access_type,
+            password: md5(password)
         })
             .save()
             .then(response => {
@@ -62,7 +75,9 @@ app.post('/auctionConfig', function(req, res) {
                 can_register,
                 is_open,
                 auction_url,
-                max_users
+                max_users,
+                access_type,
+                password: md5(password)
             },
             {
                 where: {
@@ -77,6 +92,27 @@ app.post('/auctionConfig', function(req, res) {
     } else {
         Sendresponse(res, 400, 'Invalid Config Details');
     }
+});
+
+app.post('/authorizeAuction', (req, res) => {
+    const {auction, password} = req.body;
+    models.AuctionConfig.findOne({
+        where: {
+            auction_url: auction.auction_url
+        },
+        raw: true,
+        logging: false
+    })
+        .then(auction => {
+            if (md5(password) === auction.password) {
+                Sendresponse(res, 200, {verified: true});
+            } else {
+                Sendresponse(res, 200, {verified: false});
+            }
+        })
+        .catch(err => {
+            Sendresponse(res, 400, 'Not in table :D');
+        });
 });
 
 module.exports = app;

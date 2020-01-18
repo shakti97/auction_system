@@ -35,14 +35,16 @@ class AdminPanel extends Component {
             start: '',
             activeUsers: [],
             clientIds: [],
-            selectedUser: ''
+            selectedUser: '',
+            access_type: 'public',
+            password: ''
         };
         this.onSubmit = this.onSubmit.bind(this);
         this.openAuction = this.openAuction.bind(this);
         this.closeAuction = this.closeAuction.bind(this);
     }
 
-    componentWillMount() {
+    componentDidMount() {
         this.initConfig();
     }
 
@@ -57,8 +59,9 @@ class AdminPanel extends Component {
             //prefetch config details, if it's in db
             dataFetch('/auctionConfig', data)
                 .then(response => {
-                    if (response.status_code == 200 && response.message != null) {
+                    if (response.status_code == 200 && response.message !== null) {
                         let data = response.message;
+
                         //update state values;
                         this.setState(
                             {
@@ -89,6 +92,7 @@ class AdminPanel extends Component {
     }
 
     onSubmit(values) {
+        const {access_type, password} = this.state;
         let data = {...values};
         data.q_type = this.state.q_type;
         data.user_id = this.state.owner_id;
@@ -99,7 +103,9 @@ class AdminPanel extends Component {
                     can_register: values.can_register == 1 ? true : false,
                     is_open: values.is_open == 1 ? true : false,
                     url_slug: values.url_slug,
-                    max_users: values.max_users
+                    max_users: values.max_users,
+                    access_type: values.access_type ? values.access_type : access_type,
+                    password: values.access_type === 'private' ? values.password : password
                 });
             })
             .catch(err => {
@@ -295,18 +301,8 @@ class AdminPanel extends Component {
     };
 
     render() {
-        const {
-            activeUsers,
-            q_type,
-            url_slug,
-            max_users,
-            is_open,
-            can_register,
-            clientIds,
-            catalogs,
-            sold,
-            start
-        } = this.state;
+        const {activeUsers,
+            q_type,catalogs,clientIds, sold, start, url_slug, max_users, is_open, can_register, access_type, password} = this.state;
         if (q_type == 'add_config') {
             return (
                 <div>
@@ -315,18 +311,21 @@ class AdminPanel extends Component {
                         <Form
                             onSubmit={this.onSubmit}
                             initialValues={{
-                                url_slug: url_slug,
-                                max_users: max_users,
-                                is_open: is_open,
-                                can_register: can_register
+                                url_slug,
+                                max_users,
+                                is_open,
+                                can_register,
+                                access_type,
+                                password
                             }}
                             validate={values => {
                                 const errors = {};
                                 if (!values.url_slug) {
                                     errors.url_slug = 'Required';
-                                }
-                                if (!values.max_users) {
+                                } else if (!values.max_users) {
                                     errors.max_users = 'Required';
+                                } else if (values.access_type === 'private' && !values.password) {
+                                    errors.password = 'Required';
                                 }
                                 return errors;
                             }}
@@ -360,6 +359,23 @@ class AdminPanel extends Component {
                                             </div>
                                         )}
                                     </Field>
+                                    <label>Access Type:</label>
+                                    <br />
+                                    <Field name="access_type" className="form-row form-control" component="select">
+                                        <option value="public">Public</option>
+                                        <option value="private">Private</option>
+                                    </Field>
+                                    {values.access_type === 'private' && (
+                                        <Field name="password">
+                                            {({input, meta}) => (
+                                                <div className="form-row">
+                                                    <label>Password</label>
+                                                    <input className="form-control" {...input} type="password" />
+                                                    {meta.error && meta.touched && <span>{meta.error}</span>}
+                                                </div>
+                                            )}
+                                        </Field>
+                                    )}
                                     {/* <Field name="is_open">
                     {({ input, meta }) => (
                       <div className="form-row">
